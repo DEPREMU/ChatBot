@@ -1,0 +1,27 @@
+{
+  "name": "ai",
+  "version": "1.0.0",
+  "description": "",
+  "scripts": {
+    "backend": "cd server && npm start",
+    "clean": "npx rimraf node_modules chatbot/node_modules package-lock.json chatbot/package-lock.json server/node_modules server/package-lock.json chatbot/.expo && cd server && npm cache clean --force && cd .. && cd chatbot && npm cache clean --force",
+    "clean:all": "npm run clean & npm run install-all",
+    "app": "npx expo start -c -g",
+    "app-dev": "npx expo start -c -d",
+    "build:android": "eas build --clear-cache --platform android --profile preview",
+    "build-dev:android": "eas build --clear-cache --platform android --profile development",
+    "getLocalIP": "node ./getLocalApiUrl.js",
+    "install-chatbot": "cd chatbot && npm install",
+    "install-server": "cd server && npm install",
+    "install-all": "npm install && npm run install-chatbot && npm run install-server",
+    "project": "concurrently \"npm run app\" \"npm run backend\"",
+    "start": "npm run getLocalIP & npm run install-all & npm run project"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}

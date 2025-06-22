@@ -1,0 +1,26 @@
+{
+  "extends": "expo/tsconfig.base",
+  "exclude": [
+    "node_modules",
+    "babel.config.js",
+    "metro.config.js",
+    "jest.config.js"
+  ],
+  "compilerOptions": {
+    "strict": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"],
+      "@utils": ["src/utils/"],
+      "@types": ["src/types/"],
+      "@hooks/*": ["src/hooks/*"],
+      "@assets/*": ["./assets/*"],
+      "@styles/*": ["src/styles/*"],
+      "@screens/*": ["src/screens/*"],
+      "@context/*": ["src/context/*"],
+      "@constants/*": ["src/constants/*"],
+      "@navigation/*": ["src/navigation/*"],
+      "@components/*": ["src/components/*"]
+    }
+  }
+}
