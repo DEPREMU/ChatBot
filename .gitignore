@@ -35,3 +35,7 @@ yarn-error.*
 
 # typescript
 *.tsbuildinfo
+
+# RAG and venv for AI server 
+venv
+server_rag/tools/storage
