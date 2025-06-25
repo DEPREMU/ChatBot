@@ -39,3 +39,5 @@ yarn-error.*
 # RAG and venv for AI server 
 venv
 server_rag/tools/storage
+server_rag/tools/docs
+server_rag/tools/__pycache__

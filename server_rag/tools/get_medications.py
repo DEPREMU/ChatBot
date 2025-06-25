@@ -2,11 +2,12 @@ import requests
 import os
 import json
 import time
+import re
 
 BASE_URL = "https://api.fda.gov/drug/label.json"
 OUTPUT_DIR = "docs"
 OUTPUT_DIR_JSON = "json_docs"
-MAX_RESULTS = 100
+MAX_RESULTS = 1000
 
 
 def clean_text(text):
@@ -116,30 +117,42 @@ def format_markdown(entry):
     return {"text": text, "json": data_json}
 
 
+def sanitize_filename(name: str) -> str:
+    """Sanitiza el nombre para usarlo como nombre de archivo seguro."""
+    return re.sub(r"[^a-zA-Z0-9_\-]", "_", name.strip())
+
+
 def fetch_medicines():
     print("Fetching data from OpenFDA...")
-    if not os.path.exists(OUTPUT_DIR):
-        os.makedirs(OUTPUT_DIR, exist_ok=True)
-    if not os.path.exists(OUTPUT_DIR_JSON):
-        os.makedirs(OUTPUT_DIR_JSON, exist_ok=True)
 
-    # Load skip value if exists
+    os.makedirs(OUTPUT_DIR, exist_ok=True)
+    os.makedirs(OUTPUT_DIR_JSON, exist_ok=True)
+
+    # Skip anterior
     skip = 0
-    names = []
-    skip_file = f"{OUTPUT_DIR_JSON}/skip.json"
+    names = set()
+    skip_file = os.path.join(OUTPUT_DIR_JSON, "skip.json")
+
     if os.path.exists(skip_file):
         with open(skip_file, "r", encoding="utf-8") as f:
             skip_data = json.load(f)
             skip = skip_data.get("skip", 0)
     else:
         print("No skip file found, starting from the beginning.")
-    arrJsons = []
+
+    existing_files = {
+        f.replace(".md", "").replace("_", " ").replace("-", "/").lower()
+        for f in os.listdir(OUTPUT_DIR)
+        if f.endswith(".md")
+    }
+
+    medications_dict = {}
     numErrors = 0
 
     while True:
         try:
             print(f"Fetching medications with skip={skip}...")
-            time.sleep(1 * (numErrors + 1))  # To avoid hitting the API too fast
+            time.sleep(1 * (numErrors + 1))
             params = {"limit": MAX_RESULTS, "skip": skip}
 
             response = requests.get(BASE_URL, params=params)
@@ -150,26 +163,37 @@ def fetch_medicines():
                 print("No more medications found.")
                 break
 
-            for i, entry in enumerate(results):
+            for entry in results:
                 markdown = format_markdown(entry)
                 name = entry.get("openfda", {}).get("brand_name", ["Not Recognized"])[0]
                 if name == "Not Recognized":
                     continue
-                if name in names:
-                    print(f"Skipping duplicate name: {name}")
+
+                name_lower = name.lower()
+                if (
+                    name_lower in names
+                    or name_lower in existing_files
+                    or name in medications_dict
+                ):
+                    print(f"Skipping duplicate or existing name: {name}")
                     continue
-                names.append(name)
-                safe_name = name.replace(" ", "_").replace("/", "-")
-                md_filename = f"{OUTPUT_DIR}/{safe_name}.md"
+
+                safe_name = sanitize_filename(name)
+                md_filename = os.path.join(OUTPUT_DIR, f"{safe_name}.md")
 
                 if os.path.exists(md_filename):
+                    print(f"File already exists for {name}: {md_filename}")
                     continue
 
+                # Guardar markdown
                 with open(md_filename, "w", encoding="utf-8") as f:
                     f.write(markdown["text"])
-                arrJsons.append(markdown["json"])
+
+                medications_dict[name] = markdown["json"]
+                names.add(name_lower)
+
         except Exception as e:
-            if numErrors > 10:
+            if numErrors > 5:
                 print("Too many errors, stopping the process.")
                 break
             print(f"Error processing entry: {e}")
@@ -177,25 +201,20 @@ def fetch_medicines():
             continue
 
         skip += MAX_RESULTS
-        with open(f"{OUTPUT_DIR_JSON}/skip.json", "w", encoding="utf-8") as f:
+        with open(skip_file, "w", encoding="utf-8") as f:
             json.dump({"skip": skip}, f)
-        print(f"All medications have been saved. Total written: {len(names)}")
 
-    if len(names) == 0:
-        print("No medications were written. Exiting.")
+        print(f"Batch completed. Total new written: {len(names)}")
+
+    if not medications_dict:
+        print("No new medications were written. Exiting.")
         return
-    medications_file = f"{OUTPUT_DIR_JSON}/medications.json"
-    if os.path.exists(medications_file):
-        with open(medications_file, "r", encoding="utf-8") as f:
-            existing_data = json.load(f)
-            arrJsons.extend(existing_data)
-    else:
-        print(f"Creating new file: {medications_file}")
-    arrJsons = list(
-        {json.dumps(item, sort_keys=True): item for item in arrJsons}.values()
-    )
-    with open(medications_file, "w", encoding="utf-8") as f:
-        json.dump(arrJsons, f, indent=4)
+
+    # Guardar el archivo final
+    with open(f"{OUTPUT_DIR_JSON}/medications.json", "w", encoding="utf-8") as f:
+        json.dump(medications_dict, f, indent=4, ensure_ascii=False)
+
+    print(f"✅ Finalizado. Total de medicamentos guardados: {len(medications_dict)}")
 
 
 def write_from_json():
@@ -210,13 +229,17 @@ def write_from_json():
         data = json.load(f)
 
     for item in data:
-        name = item.get("name", "Unknown").replace(" ", "_").replace("/", "-")
-        md_filename = f"{OUTPUT_DIR}/{name}.md"
+        name = item.get("name", "Unknown")
+        name_es = item.get("name_es", "Unknown")
+        name_fr = item.get("name_fr", "Unknown")
+        md_filename = f"{OUTPUT_DIR}/{name.replace(' ', '_').replace('/', '-')}.md"
         if os.path.exists(md_filename):
             continue
         with open(md_filename, "w", encoding="utf-8") as f:
             text = f"""# Name of the Medicine
-{name}
+en: {name}
+es: {name_es}
+fr: {name_fr}
 
 ## Manufacturer
 {item["manufacturer"]}
@@ -266,6 +289,7 @@ def write_from_json():
             f.write(text)
 
     print(f"All medications have been written to {OUTPUT_DIR}.")
+
 
 if __name__ == "__main__":
     # fetch_medicines()
