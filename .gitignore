@@ -41,3 +41,7 @@ venv
 server_rag/tools/storage
 server_rag/tools/docs
 server_rag/tools/__pycache__
+chatbot/node_modules
+chatbot/dist
+chatbot/web-build
+chatbot/.expo

@@ -2,14 +2,19 @@ type ResponseSocket = {
   type: "response-stream" | "error" | "done";
   chunk?: string;
   message?: string;
+  title?: string;
 };
 
 export const streamMessageFromOllama = async (
   prompt: string,
   language: string,
   onData: (chunk: string) => void
-): Promise<void> => {
-  const socket = new WebSocket("ws://100.123.53.113:9243");
+): Promise<string> => {
+  const beforeWs = "ws://100.123.53.113:9243";
+  const newWs = "wss://4ce6-185-153-177-130.ngrok-free.app";
+  const socket = new WebSocket(newWs);
+  let title: string = "";
+
   socket.onopen = () => {
     socket.send(
       JSON.stringify({
@@ -20,23 +25,38 @@ export const streamMessageFromOllama = async (
       })
     );
   };
+
   socket.onmessage = (event) => {
     if (!event?.data) return;
 
     const data = JSON.parse(event.data) as ResponseSocket;
-    if (data.type === "response-stream") {
-      onData(data.chunk || "");
-    } else if (data.type === "error") {
+    if (data.type === "response-stream") onData(data.chunk || "");
+    else if (data.type === "error") {
       console.error("Error from server:", data.message);
       return;
     } else if (data.type === "done") {
+      console.log("Streaming done.", data);
+      title = data.title || "";
       socket.close();
       return;
     }
   };
-  while (socket.readyState !== WebSocket.CLOSED) {
-    await new Promise((resolve) => setTimeout(resolve, 100));
+
+  socket.onerror = (error) => {
+    console.error("WebSocket error:", error);
+  };
+
+  socket.onclose = (e) => {
+    console.log("WebSocket closed.", e.code, e.reason);
+  };
+
+  while (
+    [WebSocket.CONNECTING, WebSocket.OPEN].includes(socket.readyState as any)
+  ) {
+    await new Promise((resolve) => setTimeout(resolve, 500));
   }
+
+  return title;
 };
 
 const s = async (onData = (s: any) => {}, language: string) => {

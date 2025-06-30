@@ -1,4 +1,8 @@
 import { logError } from "./debug";
+import * as Localization from "expo-localization";
+import { languagesSupported, LanguagesSupported } from "../translates";
+import { loadData, saveData } from "./storageManagement";
+import { KEYS_STORAGE } from "../constants";
 
 /**
  * Parses a JSON string into an object of type `T`.
@@ -82,4 +86,96 @@ export const interpolateMessage = (message: string, values: string[]) => {
     const value = values[parseInt(index, 10)];
     return value !== undefined ? value : match;
   });
+};
+
+export const getFormattedDate = (
+  date: Date,
+  locale?: string,
+  options?: Intl.DateTimeFormatOptions
+): string => {
+  if (!locale) {
+    const locales = Localization.getLocales()[0];
+    locale = locales.languageTag || "es-MX";
+  }
+  if (!options)
+    options = {
+      dateStyle: "full",
+      timeStyle: "short",
+      timeZone: "America/Mexico_City",
+    };
+
+  return new Intl.DateTimeFormat(locale, options).format(date);
+};
+
+/**
+ * Retrieves the user's preferred language from storage.
+ *
+ * This function attempts to load the language preference stored under the
+ * `LANGUAGE_KEY_STORAGE` key. If a valid language is found and is included
+ * in the list of supported languages, it returns the language. Otherwise,
+ * it returns `null`.
+ *
+ * @returns {Promise<LanguagesSupported | null>} A promise that resolves to the stored language if available and supported, or `null` otherwise.
+ */
+export const getLanguageFromStorage =
+  async (): Promise<LanguagesSupported | null> => {
+    const data = await loadData<LanguagesSupported | null>(
+      KEYS_STORAGE.LANGUAGE_KEY_STORAGE
+    );
+    if (data) {
+      const languageAvailable = languagesSupported.includes(data);
+      if (languageAvailable) return data;
+    }
+    return null;
+  };
+
+/**
+ * Retrieves the device's current language and saves it to storage if it is supported.
+ *
+ * @returns {Promise<LanguagesSupported | null>} The detected and supported language code, or "en" if detection fails.
+ *
+ * @remarks
+ * - Uses the first locale from the device's localization settings.
+ * - Checks if the detected language is among the supported languages.
+ * - Saves the language to storage using a predefined key.
+ * - Returns "en" as a fallback if detection or saving fails.
+ *
+ * @throws Will log an error if there is an issue during language detection or storage.
+ */
+export const getLanguageFromDevice =
+  async (): Promise<LanguagesSupported | null> => {
+    try {
+      const locales = Localization.getLocales()[0];
+      const language = locales.languageCode as LanguagesSupported;
+      const languageAvailable = languagesSupported.includes(language || "");
+      if (language && languageAvailable) {
+        await saveData(KEYS_STORAGE.LANGUAGE_KEY_STORAGE, language);
+        return language;
+      }
+    } catch (error) {
+      logError("./src/utils/functions/checkLanguage() =>", error);
+    }
+    return "en";
+  };
+
+/**
+ * Checks the user's language preference and saves it if not already set.
+ *
+ * @returns The user's preferred language, or "en" if not found.
+ *
+ * @remarks
+ * - This function uses `expo-localization` to get the device's locale.
+ * - It checks if the language is supported and saves it to local storage.
+ * - If no language is found, it defaults to "en".
+ */
+export const checkLanguage = async (): Promise<LanguagesSupported> => {
+  let lang: LanguagesSupported | null = null;
+
+  lang = await getLanguageFromStorage();
+  if (lang) return lang;
+
+  lang = await getLanguageFromDevice();
+  if (lang) return lang;
+
+  return "en";
 };

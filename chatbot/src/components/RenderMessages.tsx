@@ -7,6 +7,7 @@ import {
   stringifyData,
   MessageChatbot,
   parseTextChatbot,
+  getFormattedDate,
 } from "@utils";
 
 type MessagesRenderProps = {
@@ -26,6 +27,8 @@ const MessagesRender: React.FC<MessagesRenderProps> = ({
     <>
       {messages.map((message, index) => {
         const isUserMessage = message.from === "user";
+        const date = new Date(message?.timestamp || "");
+        const formattedDate = getFormattedDate(date);
 
         return (
           <View
@@ -37,9 +40,7 @@ const MessagesRender: React.FC<MessagesRenderProps> = ({
             <Text style={styles.messageText}>
               {parseTextChatbot(message?.text || "", isUserMessage)}
             </Text>
-            <Text style={styles.dateText}>
-              {new Date(message?.timestamp || "").toLocaleString()}
-            </Text>
+            <Text style={styles.dateText}>{formattedDate}</Text>
           </View>
         );
       })}

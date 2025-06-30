@@ -17,12 +17,14 @@ import {
   TimesOutIdChatbot,
   ErrorChatbot,
   RESET_ICON,
+  getFormattedDate,
 } from "@utils";
 import Button from "@components/Button";
 import { TextInput, Text } from "react-native-paper";
 import useStylesChatbot from "@styles/stylesChatbot";
 import MessagesRenderer from "@components/RenderMessages";
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import { useLanguage } from "@/context/LanguageContext";
 
 const firstMessage: LastMessageChatbot = {
   message: "",
@@ -67,19 +69,31 @@ type ResponseSocket =
       text: string;
       isDone?: boolean;
       isThinking?: boolean;
+      title?: string;
     };
 
-const timeAvailableForBotThinking = 60000; // 1 minute
+const timeAvailableForBotThinking = 180000; // 3 minute
 
-const ChatBot: React.FC = () => {
+interface ChatBotProps {
+  chatId: string; // Optional prop for chatId
+  setTitleChat: React.Dispatch<React.SetStateAction<string>>;
+  userId: string;
+  isDevMode: boolean;
+}
+
+const ChatBot: React.FC<ChatBotProps> = ({
+  chatId,
+  setTitleChat,
+  userId,
+  isDevMode,
+}) => {
   const styles = useStylesChatbot();
+  const { translations } = useLanguage();
   const timesOutId = useRef<TimesOutIdChatbot>(initialTimesOutId);
   const [error, setError] = useState<ErrorChatbot>(initError);
   const [prompt, setPrompt] = useState<string>("");
-  const [userId, setUserId] = useState<string | null>(null);
   const [socket, setSocket] = useState<WebSocket | null>(null);
   const [messages, setMessages] = useState<MessageChatbot[]>([]);
-  const [isDevMode, setIsDevMode] = useState<boolean>(true);
   const [thinkingText, setThinkingText] = useState<string | null>(null);
   const [refScrollView, setRefScrollView] = useState<ScrollView | null>(null);
   const [lastMsgBot, setLastMsgBot] =
@@ -107,7 +121,7 @@ const ChatBot: React.FC = () => {
 
   const sendMessageToBot = useCallback(
     (prompt: string) => {
-      socket?.send(stringifyData({ type: "message", prompt, userId }));
+      socket?.send(stringifyData({ type: "message", prompt, userId, chatId }));
       setPrompt("");
     },
     [socket, userId, prompt]
@@ -197,16 +211,19 @@ const ChatBot: React.FC = () => {
         const socket = new WebSocket("ws://localhost:8080");
 
         socket.onopen = () => {
-          socket.send(stringifyData({ type: "init", userId, language: "es" }));
+          socket.send(
+            stringifyData({ type: "init", userId, language: "es", chatId })
+          );
         };
 
         socket.onmessage = (event: MessageEvent<string>) => {
           const data = JSON.parse(event.data) as ResponseSocket;
           switch (data.type) {
             case "info":
-              socket.send(stringifyData({ type: "history", userId }));
+              socket.send(stringifyData({ type: "history", userId, chatId }));
               break;
             case "history":
+              log(data.history);
               setMessages(data.history || []);
               break;
             case "error":
@@ -224,10 +241,13 @@ const ChatBot: React.FC = () => {
                   },
                 ]);
                 isDevMode && log(`Final message from bot: ${data.text}`); //! Delete
+                log(data);
                 setLastMsgBot(initLastMsgBot);
                 clearTimeOutWithId("botThinking");
                 initSocket(true);
                 setError(initError);
+                if (data?.title && messages.length <= 2)
+                  setTitleChat(data.title);
               } else if (data?.isThinking) {
                 isDevMode && log("Bot is thinking...");
                 setLastMsgBot({
@@ -237,7 +257,6 @@ const ChatBot: React.FC = () => {
                   isThinking: true,
                 });
                 startThinkingText();
-                startTimeOutBotThinking();
               } else {
                 clearTimeOutWithId("botThinking");
                 clearTimeOutWithId("thinkingText");
@@ -257,36 +276,13 @@ const ChatBot: React.FC = () => {
         socket.onclose = (e) => {
           isDevMode && logError(`WebSocket closed: ${e.code} - ${e.reason}`); //! Handle close
           clearTimeOutWithId("thinkingText");
+          clearTimeOutWithId("botThinking");
         };
 
         return socket;
       }),
     [userId, socket]
   );
-
-  //! Delete this and replace it with the user's context
-  useEffect(() => {
-    const fetchUserId = async () => {
-      let storedUserId = await loadData<string | null>("@userId");
-
-      try {
-        if (!storedUserId) {
-          storedUserId = "6854690a35908648e376e2ad";
-          await saveData("@userId", storedUserId);
-        }
-        setUserId(storedUserId);
-      } catch (error) {
-        console.error("Error loading user ID:", error);
-      }
-      return storedUserId;
-    };
-
-    document?.addEventListener("keydown", (e) => {
-      if (e.key === "F9") setIsDevMode((prev) => !prev);
-    });
-
-    fetchUserId();
-  }, []);
 
   useEffect(() => {
     if (!userId) return;
@@ -299,7 +295,6 @@ const ChatBot: React.FC = () => {
   return (
     <View style={styles.containerApp}>
       <View style={styles.container}>
-        <Text style={styles.title}>MediBot</Text>
         {isDevMode && <Text style={styles.subtitle}>User ID: {userId}</Text>}
 
         <ScrollView
@@ -329,7 +324,9 @@ const ChatBot: React.FC = () => {
                     return lastMsgBot.chunk[index];
                   })}
               </Text>
-              <Text style={styles.dateText}>{new Date().toLocaleString()}</Text>
+              <Text style={styles.dateText}>
+                {getFormattedDate(new Date())}
+              </Text>
             </View>
           )}
           {error.isError && error.messageFrom && (
@@ -338,12 +335,12 @@ const ChatBot: React.FC = () => {
                 <Text style={styles.errorText}>{error.message}</Text>
                 <Button
                   replaceStyles={{
-                    button: styles?.buttonError,
+                    button: styles.buttonError,
                     textButton: {},
                   }}
                   handlePress={() => handleErrorFrom(error.messageFrom)}
                   children={
-                    <Image source={RESET_ICON} style={styles?.resetImage} />
+                    <Image source={RESET_ICON} style={styles.resetImage} />
                   }
                 />
               </View>
@@ -352,7 +349,7 @@ const ChatBot: React.FC = () => {
         </ScrollView>
 
         <TextInput
-          label="Type your message"
+          label={translations.messageBotPlaceHolder}
           mode="outlined"
           style={styles.textInput}
           value={prompt}
