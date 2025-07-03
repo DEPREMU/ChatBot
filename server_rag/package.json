@@ -7,9 +7,10 @@
     "start": "concurrently \"npm run server\" \"npm run rag\"",
     "server": "node server.ts",
     "index-documents": "start powershell -NoExit -Command \"cd ./tools; venv/Scripts/activate; python index_documents.py; exit\" ",
-    "rag": "start powershell -NoExit -Command \"cd ./tools; venv/Scripts/activate; uvicorn rag_api:app --reload --port 8000; exit\"",
+    "rag": "start powershell -NoExit -Command \"cd ./tools; venv/Scripts/activate; uvicorn rag_api:app --port 8000; exit\"",
     "install-all": "npm install && npm run install-py",
-    "install-py": "start powershell -NoExit -Command \"cd ./tools; python -m venv venv; venv/Scripts/activate; pip install -r requirements.txt; cd ..; npm run index-documents; exit\""
+    "install-py": "start powershell -NoExit -Command \"cd ./tools; python -m venv venv; venv/Scripts/activate; pip install -r requirements.txt; cd ..; npm run index-documents; exit\"",
+    "create-docs": "node tools/request.ts"
   },
   "keywords": [],
   "author": "",

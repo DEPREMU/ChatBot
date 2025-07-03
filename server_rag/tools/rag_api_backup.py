@@ -143,7 +143,7 @@ async def get_context(req: PromptRequest, request: Request):
 
     try:
         print("🔍 Starting retrieval...")
-        retriever = index.as_retriever(similarity_top_k=2)
+        retriever = index.as_retriever(similarity_top_k=1)
         nodes = retriever.retrieve(req.prompt)
         textNodes = "\n".join([node.node.text for node in nodes])
         print(f"📝 Retrieved {len(nodes)} nodes")

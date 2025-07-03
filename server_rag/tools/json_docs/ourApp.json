@@ -1,0 +1,96 @@
+{
+  "name": "MediTime",
+  "description": "A medication management app with a smart pillbox that facilitates daily medication control and sends automatic reminders",
+  "purpose": "To improve adherence to medical treatment and provide peace of mind to both users and caregivers",
+  "main_features": {
+    "smart_pillbox": {
+      "description": "Connected device that syncs with the mobile app",
+      "functions": [
+        "Automatic reminders",
+        "Personalized alerts",
+        "Real-time notifications",
+        "Precise control of schedules and doses"
+      ]
+    },
+    "user_management": {
+      "user_types": ["Caregiver", "Patient"],
+      "authentication": {
+        "sign_up": "Account creation with email and password",
+        "login": "Access with registered credentials",
+        "remember_session": "Option to keep session active",
+        "email_verification": "Email confirmation"
+      }
+    },
+    "patient_management": {
+      "add_patient": "Form to register new patients",
+      "patient_information": [
+        "Name",
+        "Age",
+        "Medical conditions",
+        "Allergies",
+        "Description"
+      ],
+      "patient_selection": "Switch between registered patients"
+    },
+    "medication_management": {
+      "medication_search": "Search tool to find medications by name",
+      "medication_information": [
+        "Medication name",
+        "Dosage",
+        "Type (pills, mg, units)"
+      ],
+      "schedule_programming": {
+        "week_days": "Select specific days (Monday to Sunday)",
+        "start_time": "Set time for first dose",
+        "hour_interval": "Frequency between doses",
+        "stock": "Available quantity of the medication"
+      },
+      "urgency_levels": ["Low", "Medium", "High"]
+    },
+    "user_interface": {
+      "supported_languages": ["Spanish", "English"],
+      "navigation": {
+        "home_screen": "General information and message carousel",
+        "dashboard": "Main panel with personalized greeting and patients",
+        "medication_management": "Main screen to schedule medications",
+        "patient_profile": "Detailed view of patient information"
+      },
+      "responsive_design": "Automatic adaptation to phones, tablets, and web"
+    },
+    "notifications": {
+      "medication_reminders": "Alerts to take medications on time",
+      "notification_permissions": "Request authorization to send alerts"
+    }
+  },
+  "user_flow": {
+    "first_use": [
+      "Account registration",
+      "Email verification",
+      "Login",
+      "Language setup",
+      "Add first patient",
+      "Configure first medication"
+    ],
+    "daily_use": [
+      "Login",
+      "Select patient",
+      "Review scheduled times",
+      "Receive notifications",
+      "Confirm medication intake"
+    ]
+  },
+  "benefits": [
+    "Precise medication control",
+    "Reduced dosage errors",
+    "Improved treatment adherence",
+    "Peace of mind for caregivers",
+    "Centralized management of multiple patients",
+    "Personalized automatic reminders"
+  ],
+  "target_audience": [
+    "Elderly people taking multiple medications",
+    "Patient caregivers",
+    "Family members responsible for medical care",
+    "People with chronic medical conditions"
+  ]
+}
