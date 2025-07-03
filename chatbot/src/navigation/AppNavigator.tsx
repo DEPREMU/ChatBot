@@ -68,17 +68,20 @@ const handleGetChatId = () => {
 
 const AppNavigator: React.FC = () => {
   const { translations } = useLanguage();
+  const getRoutes = () => [
+    { key: "chatbot", title: "Chatbot", focusedIcon: "chat" },
+    { key: "chats", title: translations.chats, focusedIcon: "history" },
+    { key: "settings", title: translations.settings, focusedIcon: "cog" },
+  ];
 
   const [index, setIndex] = useState<number>(0);
   const [userId, setUserId] = useState<string | null>(null);
   const [chatId, setChatId] = useState<string>(handleGetChatId());
   const [isDevMode, setIsDevMode] = useState<boolean>(true);
   const [titleChat, setTitleChat] = useState<string>("MediBot");
-  const [routes] = useState([
-    { key: "chatbot", title: "Chatbot", focusedIcon: "chat" },
-    { key: "chats", title: translations.chats, focusedIcon: "history" },
-    { key: "settings", title: translations.settings, focusedIcon: "cog" },
-  ]);
+  const [routes, setRoutes] = useState(getRoutes());
+
+  useEffect(() => setRoutes(getRoutes()), [translations]);
 
   useEffect(() => {
     if (index === 0) return;
@@ -110,11 +113,13 @@ const AppNavigator: React.FC = () => {
       </>
     ),
     settings: () => (
-      <Appbar.Header>
-        <Appbar.Content title={translations.settings} />
+      <>
+        <Appbar.Header>
+          <Appbar.Content title={translations.settings} />
+        </Appbar.Header>
 
         <Settings />
-      </Appbar.Header>
+      </>
     ),
     chats: () => (
       <>
@@ -128,7 +133,13 @@ const AppNavigator: React.FC = () => {
           />
         </Appbar.Header>
 
-        {!!userId && <Chats userId={userId} setChatId={setChatId} />}
+        {!!userId && (
+          <Chats
+            userId={userId}
+            setChatId={setChatId}
+            setTitleChat={setTitleChat}
+          />
+        )}
       </>
     ),
   });
@@ -154,11 +165,13 @@ const AppNavigator: React.FC = () => {
     });
 
     fetchUserId();
-  }, []);
 
-  useEffect(() => {
-    log(`Current chatId: ${chatId}`);
-  }, [chatId]);
+    return () => {
+      document?.removeEventListener("keydown", (e) => {
+        if (e.key === "F9") setIsDevMode((prev) => !prev);
+      });
+    };
+  }, []);
 
   return (
     <NavigationContainer>

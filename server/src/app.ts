@@ -292,7 +292,7 @@ wss.on("connection", (ws: WebSocket) => {
           _id: new ObjectId(userId) as unknown as string,
         })
         .then((doc) => doc?.chats || []);
-      if (!chats.some((chat) => Object.keys(chat)[0] === title))
+      if (!chats.map((c) => c.id).includes(parsed.chatId))
         await collectionUser.updateOne(
           { _id: new ObjectId(userId) as unknown as string },
           {

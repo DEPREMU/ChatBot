@@ -5,4 +5,5 @@ export const en: typeLanguages = {
   chats: "Chats",
   settings: "Settings",
   selectLanguage: "Select Language",
+  chatStarted: "Chat started:",
 };

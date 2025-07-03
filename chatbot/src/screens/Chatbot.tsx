@@ -7,26 +7,25 @@ import {
 } from "react-native";
 import {
   log,
-  loadData,
-  saveData,
+  logError,
+  RESET_ICON,
+  ErrorChatbot,
   stringifyData,
   MessageChatbot,
-  parseTextChatbot,
-  LastMessageChatbot,
-  logError,
-  TimesOutIdChatbot,
-  ErrorChatbot,
-  RESET_ICON,
   getFormattedDate,
+  parseTextChatbot,
+  TimesOutIdChatbot,
+  LastMessageChatbot,
 } from "@utils";
 import Button from "@components/Button";
-import { TextInput, Text } from "react-native-paper";
+import ButtonComponent from "@components/Button";
+import { useLanguage } from "@/context/LanguageContext";
 import useStylesChatbot from "@styles/stylesChatbot";
 import MessagesRenderer from "@components/RenderMessages";
+import { TextInput, Text } from "react-native-paper";
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { useLanguage } from "@/context/LanguageContext";
 
-const firstMessage: LastMessageChatbot = {
+const voidMessage: LastMessageChatbot = {
   message: "",
   chunk: [],
   writing: false,
@@ -75,17 +74,17 @@ type ResponseSocket =
 const timeAvailableForBotThinking = 180000; // 3 minute
 
 interface ChatBotProps {
-  chatId: string; // Optional prop for chatId
-  setTitleChat: React.Dispatch<React.SetStateAction<string>>;
+  chatId: string;
   userId: string;
   isDevMode: boolean;
+  setTitleChat: React.Dispatch<React.SetStateAction<string>>;
 }
 
 const ChatBot: React.FC<ChatBotProps> = ({
   chatId,
-  setTitleChat,
   userId,
   isDevMode,
+  setTitleChat,
 }) => {
   const styles = useStylesChatbot();
   const { translations } = useLanguage();
@@ -94,11 +93,10 @@ const ChatBot: React.FC<ChatBotProps> = ({
   const [prompt, setPrompt] = useState<string>("");
   const [socket, setSocket] = useState<WebSocket | null>(null);
   const [messages, setMessages] = useState<MessageChatbot[]>([]);
+  const [lastMsgUser, setLastMsgUser] = useState<MessageChatbot | null>(null);
   const [thinkingText, setThinkingText] = useState<string | null>(null);
   const [refScrollView, setRefScrollView] = useState<ScrollView | null>(null);
-  const [lastMsgBot, setLastMsgBot] =
-    useState<LastMessageChatbot>(firstMessage);
-  const [lastMsgUser, setLastMsgUser] = useState<MessageChatbot | null>(null);
+  const [lastMsgBot, setLastMsgBot] = useState<LastMessageChatbot>(voidMessage);
 
   const clearTimeOutWithId = (intervalIdKey: keyof TimesOutIdChatbot) => {
     if (!timesOutId?.current?.[intervalIdKey].id) return;
@@ -127,28 +125,40 @@ const ChatBot: React.FC<ChatBotProps> = ({
     [socket, userId, prompt]
   );
 
+  const sendMessage = useCallback(() => {
+    log("Sending message to bot:", prompt);
+    if (
+      !socket ||
+      (socket.readyState !== WebSocket.OPEN &&
+        socket.readyState !== WebSocket.CONNECTING)
+    ) {
+      logError("WebSocket is not open.");
+      initSocket(true);
+      return;
+    }
+    isDevMode && log(`Sending message: ${prompt}`);
+    setMessages((prev) => {
+      const newMessage = {
+        from: "user",
+        text: prompt,
+        timestamp: new Date().toISOString(),
+        number: prev.length + 1,
+      } as MessageChatbot;
+      setLastMsgUser(newMessage);
+      return [...prev, newMessage];
+    });
+
+    sendMessageToBot(prompt);
+  }, [sendMessageToBot, socket, prompt, userId, chatId, isDevMode]);
+
   const handleKeyPress = useCallback(
     (e: NativeSyntheticEvent<TextInputKeyPressEventData>) => {
       if (e.nativeEvent.key !== "Enter") return;
-      if (!socket || socket.readyState !== WebSocket.OPEN) {
-        logError("WebSocket is not open.");
-        return;
-      }
-      isDevMode && log(`Sending message: ${prompt}`);
-      setMessages((prev) => {
-        const newMessage = {
-          from: "user",
-          text: prompt,
-          timestamp: new Date().toISOString(),
-          number: prev.length + 1,
-        } as MessageChatbot;
-        setLastMsgUser(newMessage);
-        return [...prev, newMessage];
-      });
+      if (!prompt || lastMsgBot.writing) return;
 
-      sendMessageToBot(prompt);
+      sendMessage();
     },
-    [socket, prompt, userId]
+    [sendMessage]
   );
 
   const handleChangeTextInput = useCallback(
@@ -244,7 +254,7 @@ const ChatBot: React.FC<ChatBotProps> = ({
                 log(data);
                 setLastMsgBot(initLastMsgBot);
                 clearTimeOutWithId("botThinking");
-                initSocket(true);
+                initSocket();
                 setError(initError);
                 if (data?.title && messages.length <= 2)
                   setTitleChat(data.title);
@@ -348,15 +358,26 @@ const ChatBot: React.FC<ChatBotProps> = ({
           )}
         </ScrollView>
 
-        <TextInput
-          label={translations.messageBotPlaceHolder}
-          mode="outlined"
-          style={styles.textInput}
-          value={prompt}
-          disabled={lastMsgBot.writing}
-          onChangeText={handleChangeTextInput}
-          onKeyPress={handleKeyPress}
-        />
+        <View style={styles.inputContainer}>
+          <TextInput
+            label={translations.messageBotPlaceHolder}
+            mode="outlined"
+            value={prompt}
+            disabled={lastMsgBot.writing}
+            onChangeText={handleChangeTextInput}
+            onKeyPress={handleKeyPress}
+            style={styles.input}
+          />
+          <ButtonComponent
+            handlePress={sendMessage}
+            disabled={!prompt || lastMsgBot.writing}
+            replaceStyles={{ button: styles.buttonSend, textButton: {} }}
+            forceReplaceStyles
+            children={
+              <TextInput.Icon icon="send" size={24} onPress={sendMessage} />
+            }
+          />
+        </View>
       </View>
     </View>
   );

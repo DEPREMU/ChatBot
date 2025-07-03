@@ -9,5 +9,6 @@ export type typeLanguages = {
   messageBotPlaceHolder: string;
   chats: string;
   settings: string;
+  chatStarted: string;
   selectLanguage: string;
 };

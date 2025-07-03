@@ -11,7 +11,7 @@ export const streamMessageFromOllama = async (
   onData: (chunk: string) => void
 ): Promise<string> => {
   const beforeWs = "ws://100.123.53.113:9243";
-  const newWs = "wss://4ce6-185-153-177-130.ngrok-free.app";
+  const newWs = "wss://766b-185-153-177-173.ngrok-free.app";
   const socket = new WebSocket(newWs);
   let title: string = "";
 

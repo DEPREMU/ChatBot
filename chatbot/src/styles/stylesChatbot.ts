@@ -117,6 +117,30 @@ const useStylesChatbot = () => {
       width: 20,
       height: 20,
     },
+    inputContainer: {
+      width: "100%",
+      flexDirection: "row",
+      gap: 5,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    buttonSend: {
+      padding: 10,
+      borderRadius: 10,
+      alignItems: "center",
+      width: 50,
+      height: "100%",
+      justifyContent: "center",
+    },
+    input: {
+      width: "90%",
+      borderRadius: 8,
+      paddingHorizontal: 12,
+      backgroundColor: "#f1f1f1",
+      borderColor: "#d0d0d0",
+      borderWidth: 1,
+      color: "#333",
+    },
   });
 };
 
