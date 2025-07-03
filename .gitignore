@@ -45,3 +45,11 @@ chatbot/node_modules
 chatbot/dist
 chatbot/web-build
 chatbot/.expo
+
+# Sensitive files with credentials and API keys
+server/.env
+server/credentials.readonly
+*.env
+credentials.*
+!*.env.example
+!*.example
