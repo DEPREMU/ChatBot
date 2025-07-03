@@ -177,21 +177,6 @@ const ChatBot: React.FC<ChatBotProps> = ({
     [setRefScrollView]
   );
 
-  const startTimeOutBotThinking = useCallback(() => {
-    timesOutId.current.botThinking.id = setTimeout(() => {
-      setLastMsgBot(initLastMsgBot);
-      setThinkingText(null);
-      clearTimeOutWithId("thinkingText");
-      setError({
-        isError: true,
-        messageFrom: "Bot",
-        message: "Bot took too long to respond, resetting state.",
-        code: 408, // HTTP 408 Request Timeout
-      });
-      isDevMode && logError("Bot took too long to respond, resetting state.");
-    }, timeAvailableForBotThinking);
-  }, []);
-
   const handleErrorFrom = useCallback(
     (messageFrom: typeof error.messageFrom) => {
       if (!messageFrom || !lastMsgUser) return;
@@ -241,19 +226,21 @@ const ChatBot: React.FC<ChatBotProps> = ({
               break;
             case "response-stream":
               if (data?.isDone) {
-                setMessages((prev) => [
-                  ...prev,
-                  {
-                    from: "bot",
-                    text: data?.text || "",
-                    timestamp: new Date().toISOString(),
-                    number: prev.length + 1,
-                  },
-                ]);
+                if (data.text.length > 20)
+                  setMessages((prev) => [
+                    ...prev,
+                    {
+                      from: "bot",
+                      text: data?.text || "",
+                      timestamp: new Date().toISOString(),
+                      number: prev.length + 1,
+                    },
+                  ]);
+                else if (lastMsgUser?.text && lastMsgUser.text.length > 0)
+                  sendMessageToBot(lastMsgUser.text);
                 isDevMode && log(`Final message from bot: ${data.text}`); //! Delete
                 log(data);
                 setLastMsgBot(initLastMsgBot);
-                clearTimeOutWithId("botThinking");
                 initSocket();
                 setError(initError);
                 if (data?.title && messages.length <= 2)

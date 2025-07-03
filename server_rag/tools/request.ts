@@ -4,8 +4,8 @@ import * as path from "path";
 import { log } from "console";
 
 const BASE_URL = "https://api.fda.gov/drug/label.json";
-const PATH_JSON = "./tools/json_docs";
-const OUTPUT_DIR = "./tools/docs";
+const PATH_JSON = "./json_docs";
+const OUTPUT_DIR = "./docs";
 const MAX_RESULTS = 1000;
 
 type EntryJSON = {
@@ -169,6 +169,10 @@ const formatFromJSON = (entry: any): { text: string; json: EntryJSON } => {
   };
   const text = `# Name of the Medicine
 ${name}
+## Name (Spanish)
+${name_es}
+## Name (French)
+${name_fr}
 
 ## Manufacturer
 ${manufacturer}
@@ -325,6 +329,7 @@ Improve adherence to medical treatments and provide peace of mind for users and 
 `;
 
   const filePath = path.join(OUTPUT_DIR, "meditime.md");
+  fs.mkdirSync(OUTPUT_DIR, { recursive: true });
   fs.writeFileSync(filePath, meditimeText, { encoding: "utf-8" });
   console.log(`📘 MediTime markdown saved at: ${filePath}`);
 };

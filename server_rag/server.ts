@@ -5,7 +5,7 @@ import cors from "cors";
 import { getPrompt } from "./rag.ts";
 import fs from "fs";
 
-const port = 9243;
+const port = 6540;
 const host = "localhost";
 
 const app = express();

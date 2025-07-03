@@ -65,20 +65,21 @@ async def cancel_on_disconnect(request: Request, call_next):
 def get_system_prompt(lang="es"):
     return f"""You are an assistant that provides only the necessary context or summarized information based on the user's prompt. This context will be used by another AI to generate a complete response for the user. Follow these rules strictly:
 
-1. Respond only with relevant context based on the user's prompt.
-2. If the user's prompt requires factual information to form a complete response, provide only the essential, summarized information directly related to the prompt.
-3. Do not repeat or rephrase the user's prompt.
-4. Do not provide full answers or completions—only the context or summarized info needed to generate a complete response.
-5. Respond only in the language specified by the user. If no language is specified, respond in Spanish.
-6. Be concise and precise—include only what is strictly necessary.
-7. If the user's prompt is **not related to health, medicine, drugs/pills, or the MediTime app**, politely reject the request and do not provide any context.
-8. If the user's prompt is about **MediTime**, provide a short summary of the app's functionality, purpose, and key features.
-9. Never include explanations or extra commentary—your response must be minimal and to the point.
+Respond only with relevant context based on the user's prompt.
+If the user's prompt requires factual information to form a complete response, provide only the essential, summarized information directly related to the prompt.
+Do not repeat or rephrase the user's prompt.
+Do not provide full answers or completions—only the context or summarized info needed to generate a complete response.
+Respond only in the language specified by the user. If no language is specified, respond in Spanish.
+Be concise and precise—include only what is strictly necessary.
+If the user's prompt is **not related to health, medicine, drugs/pills, or the MediTime app**, politely reject the request and do not provide any context.
+If the user's prompt is about **MediTime**, provide a short summary of the app's functionality, purpose, and key features.
+Never include explanations or extra commentary—your response must be minimal and to the point.
+If the information provided is not sufficient to answer the user's question, you can answer with your own knowledge.
 
 Important Behavior Rule:
 If the user's prompt is not related to health, medicine, pills/drugs, or the MediTime app, reject the request politely and concisely, in the language specified.
 
-Respond only in this language: {lang}. If the user specifies a language, respond in the language specified by the user."""
+Respond only in this language: **{lang}**. If the user specifies a language, respond in the language specified by the user."""
 
 
 # 1. Configurar LLM y embeddings
@@ -172,9 +173,33 @@ async def get_context(req: PromptRequest, request: Request):
 
     async def stream_generator():
         ollama_task = None
+        client_disconnected = False
+        
+        async def check_client_connection():
+            """Check if client is still connected"""
+            nonlocal client_disconnected
+            try:
+                # Try to get client info periodically
+                while not client_disconnected:
+                    await asyncio.sleep(1.0)  # Check every second
+                    # This will throw an exception if client disconnected
+                    if not hasattr(request, 'client') or not request.client:
+                        print("🔌 Client connection lost")
+                        client_disconnected = True
+                        break
+            except asyncio.CancelledError:
+                print("� Client connection check cancelled")
+                client_disconnected = True
+            except Exception as e:
+                print(f"🔌 Client connection check error: {e}")
+                client_disconnected = True
+        
         try:
-            print("🔄 Stream generator started")
+            print("�🔄 Stream generator started")
             start_time = time.time()
+
+            # Start client connection monitoring
+            connection_task = asyncio.create_task(check_client_connection())
 
             # Función para ejecutar la generación de Ollama en un hilo separado
             def run_ollama_generation():
@@ -199,11 +224,18 @@ async def get_context(req: PromptRequest, request: Request):
                 print("❌ Timeout waiting for Ollama response")
                 yield "[Error: Timeout waiting for response]".encode("utf-8")
                 return
+            finally:
+                connection_task.cancel()
 
             print("🔄 Streaming response after", time.time() - start_time, "seconds")
 
             chunk_count = 0
             for i, chunk in enumerate(response):
+                # Check if client disconnected
+                if client_disconnected:
+                    print("🔌 Client disconnected, stopping stream")
+                    break
+                    
                 chunk_count += 1
 
                 if i == 0:
@@ -222,7 +254,8 @@ async def get_context(req: PromptRequest, request: Request):
             )
 
         except asyncio.CancelledError:
-            print("❌ Streaming cancelled")
+            print("❌ Streaming cancelled - client likely disconnected")
+            client_disconnected = True
             # Cancelar la tarea de Ollama si está corriendo
             if ollama_task and not ollama_task.done():
                 ollama_task.cancel()
@@ -230,6 +263,12 @@ async def get_context(req: PromptRequest, request: Request):
         except Exception as e:
             print(f"❌ Exception while streaming: {str(e)}")
             yield f"[Error: {str(e)}]".encode("utf-8")
+        finally:
+            # Cleanup
+            if 'connection_task' in locals():
+                connection_task.cancel()
+            if ollama_task and not ollama_task.done():
+                ollama_task.cancel()
 
     return StreamingResponse(stream_generator(), media_type="text/plain")
 
